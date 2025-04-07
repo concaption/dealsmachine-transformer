@@ -28,7 +28,7 @@ app.add_middleware(
 )
 
 @app.post("/transform")
-async def transform_property_data(data: Dict[str, Any] = Body(...)):
+async def transform_property_data(data: Any = Body(...)):
     """
     Transform property data by extracting basic info and creating sequentially numbered phone numbers.
     
@@ -39,19 +39,58 @@ async def transform_property_data(data: Dict[str, Any] = Body(...)):
         List of transformed property data with sequential phone numbers
     """
     try:
-        logger.info(f"Received request with data: {data}")
+        logger.info(f"Received request with data type: {type(data)}")
+        logger.info(f"Raw data content: {data}")
         
         # Handle raw string data from make.com
-        if isinstance(data, str) and data.startswith('IMTBuffer'):
-            logger.info("Processing IMTBuffer data")
-            try:
-                buffer_data = data.split(': ')[1]
-                decoded_data = bytes.fromhex(buffer_data).decode('utf-8')
-                data = json.loads(decoded_data)
-                logger.info(f"Successfully decoded buffer data: {data}")
-            except (ValueError, json.JSONDecodeError, IndexError) as e:
-                logger.error(f"Error decoding buffer data: {str(e)}")
-                raise HTTPException(status_code=400, detail=f"Invalid data format: {str(e)}")
+        if isinstance(data, str):
+            logger.info("Processing string data")
+            if data.startswith('IMTBuffer'):
+                logger.info("Detected IMTBuffer format")
+                try:
+                    # Extract the hex data after the colon
+                    buffer_parts = data.split(': ')
+                    if len(buffer_parts) != 2:
+                        raise ValueError("Invalid IMTBuffer format: missing data part")
+                        
+                    hex_data = buffer_parts[1].strip()
+                    logger.info(f"Extracted hex data: {hex_data}")
+                    
+                    # Convert hex to bytes
+                    try:
+                        binary_data = bytes.fromhex(hex_data)
+                        logger.info(f"Converted to binary data: {binary_data}")
+                    except ValueError as e:
+                        logger.error(f"Error converting hex to bytes: {str(e)}")
+                        raise ValueError(f"Invalid hex data: {str(e)}")
+                    
+                    # Decode bytes to string
+                    try:
+                        decoded_data = binary_data.decode('utf-8')
+                        logger.info(f"Decoded data: {decoded_data}")
+                    except UnicodeDecodeError as e:
+                        logger.error(f"Error decoding bytes: {str(e)}")
+                        raise ValueError(f"Invalid UTF-8 data: {str(e)}")
+                    
+                    # Parse JSON
+                    try:
+                        data = json.loads(decoded_data)
+                        logger.info(f"Parsed JSON data: {data}")
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Error parsing JSON: {str(e)}")
+                        raise ValueError(f"Invalid JSON data: {str(e)}")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing IMTBuffer data: {str(e)}")
+                    raise HTTPException(status_code=400, detail=f"Error processing buffer data: {str(e)}")
+            else:
+                # Try to parse as regular JSON
+                try:
+                    data = json.loads(data)
+                    logger.info(f"Parsed JSON data: {data}")
+                except json.JSONDecodeError as e:
+                    logger.error(f"Error parsing JSON string: {str(e)}")
+                    raise HTTPException(status_code=400, detail=f"Invalid JSON data: {str(e)}")
 
         # Basic structure validation
         if not isinstance(data, list):
