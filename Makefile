@@ -1,20 +1,22 @@
+.PHONY: setup install test format lint docker-build docker-run docker-compose-up clean
+
 setup:
-	chmod +x ./setup.sh &&\
-		./setup.sh
+	python -m venv .venv
+	.venv/Scripts/activate && pip install --upgrade pip
+	.venv/Scripts/activate && pip install -r requirements.txt
+
 install:
-	pip install --upgrade pip &&\
-		pip install -r requirements.txt
-test:
-	python -m pytest -vv --cov=main test_*.py &&\
-	python -m pytest --nbval notebook.ipynb
-format:
-	black *.py
-lint:
-	pylint --disable=R,C *.py
-refactor: format lint
-deploy:
-	# deploy goes here
+	pip install --upgrade pip
+	pip install -r requirements.txt
+
 run:
-	chmod +x ./main.py &&\
-		./main.py
-all: install lint test format deploy
+	python api.py
+
+test:
+	python test_api.py
+
+run-docker:
+	docker compose up --build
+
+stop-docker:
+	docker compose down
