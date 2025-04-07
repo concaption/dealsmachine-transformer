@@ -1,6 +1,6 @@
 import json
 from typing import List, Dict, Any
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 
 # Create FastAPI app
@@ -20,7 +20,7 @@ app.add_middleware(
 )
 
 @app.post("/transform")
-async def transform_property_data(data: Any):
+async def transform_property_data(data: Any = Body(...)):
     """
     Transform property data by extracting basic info and creating sequentially numbered phone numbers.
     
