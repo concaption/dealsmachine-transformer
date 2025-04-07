@@ -20,27 +20,27 @@ app.add_middleware(
 )
 
 @app.post("/transform")
-async def transform_property_data(data: Dict[str, Any]):
+async def transform_property_data(data: Any):
     """
     Transform property data by extracting basic info and creating sequentially numbered phone numbers.
     
     Args:
-        data: List of property data dictionaries or binary buffer data
+        data: Raw data from make.com HTTP module
         
     Returns:
         List of transformed property data with sequential phone numbers
     """
     try:
-        # Handle binary buffer data
-        if isinstance(data, dict) and 'data' in data and isinstance(data['data'], str) and data['data'].startswith('IMTBuffer'):
+        # Handle raw string data from make.com
+        if isinstance(data, str) and data.startswith('IMTBuffer'):
             # Extract the binary data from the buffer string
-            buffer_data = data['data'].split(': ')[1]
-            # Convert hex string to bytes and decode
             try:
+                buffer_data = data.split(': ')[1]
+                # Convert hex string to bytes and decode
                 decoded_data = bytes.fromhex(buffer_data).decode('utf-8')
                 data = json.loads(decoded_data)
-            except (ValueError, json.JSONDecodeError):
-                raise HTTPException(status_code=400, detail="Invalid binary data format")
+            except (ValueError, json.JSONDecodeError, IndexError):
+                raise HTTPException(status_code=400, detail="Invalid data format. Expected valid JSON data")
 
         # Basic structure validation
         if not isinstance(data, list) or not data:
