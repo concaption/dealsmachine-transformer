@@ -25,12 +25,23 @@ async def transform_property_data(data: Dict[str, Any]):
     Transform property data by extracting basic info and creating sequentially numbered phone numbers.
     
     Args:
-        data: List of property data dictionaries
+        data: List of property data dictionaries or binary buffer data
         
     Returns:
         List of transformed property data with sequential phone numbers
     """
     try:
+        # Handle binary buffer data
+        if isinstance(data, dict) and 'data' in data and isinstance(data['data'], str) and data['data'].startswith('IMTBuffer'):
+            # Extract the binary data from the buffer string
+            buffer_data = data['data'].split(': ')[1]
+            # Convert hex string to bytes and decode
+            try:
+                decoded_data = bytes.fromhex(buffer_data).decode('utf-8')
+                data = json.loads(decoded_data)
+            except (ValueError, json.JSONDecodeError):
+                raise HTTPException(status_code=400, detail="Invalid binary data format")
+
         # Basic structure validation
         if not isinstance(data, list) or not data:
             raise HTTPException(status_code=400, detail="Expected data to be a non-empty list")
