@@ -20,7 +20,7 @@ app.add_middleware(
 )
 
 @app.post("/transform")
-async def transform_property_data(data: List[Dict[str, Any]]):
+async def transform_property_data(data: Dict[str, Any]):
     """
     Transform property data by extracting basic info and creating sequentially numbered phone numbers.
     
@@ -34,12 +34,11 @@ async def transform_property_data(data: List[Dict[str, Any]]):
         # Basic structure validation
         if not isinstance(data, list) or not data:
             raise HTTPException(status_code=400, detail="Expected data to be a non-empty list")
-
-        results = data[0]
-        if not results or 'properties' not in results:
+ 
+        if not data or 'properties' not in data:
             raise HTTPException(status_code=400, detail="'results' or 'properties' key not found in data")
 
-        properties_list = results['properties']
+        properties_list = data['properties']
         extracted_properties = []
 
         for property_data in properties_list:
