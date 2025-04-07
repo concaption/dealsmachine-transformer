@@ -35,7 +35,7 @@ async def transform_property_data(data: List[Dict[str, Any]]):
         if not isinstance(data, list) or not data:
             raise HTTPException(status_code=400, detail="Expected data to be a non-empty list")
 
-        results = data[0].get('results')
+        results = data[0]
         if not results or 'properties' not in results:
             raise HTTPException(status_code=400, detail="'results' or 'properties' key not found in data")
 
