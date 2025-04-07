@@ -28,7 +28,7 @@ app.add_middleware(
 )
 
 @app.post("/transform")
-async def transform_property_data(data: Any = Body(...)):
+async def transform_property_data(data: Dict[str, Any] = Body(...)):
     """
     Transform property data by extracting basic info and creating sequentially numbered phone numbers.
     
@@ -98,19 +98,14 @@ async def transform_property_data(data: Any = Body(...)):
             raise HTTPException(status_code=400, detail="Expected data to be a dictionary")
             
         if not data:
-            logger.error("Data list is empty")
+            logger.error("Data dictionary is empty")
             raise HTTPException(status_code=400, detail="Expected data to be a non-empty dictionary")
 
         try:
-            # Extract properties from the nested structure
-            first_item = data[0]
-            if not isinstance(first_item, dict):
-                logger.error(f"First item is not a dictionary. Type: {type(first_item)}")
-                raise HTTPException(status_code=400, detail="First item in data must be a dictionary")
-
-            results = first_item.get('results')
+            # Extract properties from the results
+            results = data.get('results')
             if not results:
-                logger.error("'results' key not found in first item")
+                logger.error("'results' key not found in data")
                 raise HTTPException(status_code=400, detail="'results' key not found in data")
 
             if not isinstance(results, dict):
