@@ -1,7 +1,15 @@
 import json
+import logging
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
@@ -20,7 +28,7 @@ app.add_middleware(
 )
 
 @app.post("/transform")
-async def transform_property_data(data: Any = Body(...)):
+async def transform_property_data(data: Dict[str, Any] = Body(...)):
     """
     Transform property data by extracting basic info and creating sequentially numbered phone numbers.
     
@@ -31,34 +39,43 @@ async def transform_property_data(data: Any = Body(...)):
         List of transformed property data with sequential phone numbers
     """
     try:
+        logger.info(f"Received request with data: {data}")
+        
         # Handle raw string data from make.com
         if isinstance(data, str) and data.startswith('IMTBuffer'):
-            # Extract the binary data from the buffer string
+            logger.info("Processing IMTBuffer data")
             try:
                 buffer_data = data.split(': ')[1]
-                # Convert hex string to bytes and decode
                 decoded_data = bytes.fromhex(buffer_data).decode('utf-8')
                 data = json.loads(decoded_data)
-            except (ValueError, json.JSONDecodeError, IndexError):
+                logger.info(f"Successfully decoded buffer data: {data}")
+            except (ValueError, json.JSONDecodeError, IndexError) as e:
+                logger.error(f"Error decoding buffer data: {str(e)}")
                 raise HTTPException(status_code=400, detail="Invalid data format. Expected valid JSON data")
 
         # Basic structure validation
         if not isinstance(data, list) or not data:
+            logger.error("Invalid data structure: Expected non-empty list")
             raise HTTPException(status_code=400, detail="Expected data to be a non-empty list")
- 
-        # if not data or 'properties' not in data:
-        #     raise HTTPException(status_code=400, detail="'results' or 'properties' key not found in data")
 
-        properties_list = data
+        # Extract properties from the nested structure
+        results = data[0].get('results')
+        if not results or 'properties' not in results:
+            logger.error("Invalid data structure: 'results' or 'properties' key not found")
+            raise HTTPException(status_code=400, detail="'results' or 'properties' key not found in data")
+
+        properties_list = results['properties']
         extracted_properties = []
+        logger.info(f"Processing {len(properties_list)} properties")
 
         for property_data in properties_list:
+            logger.debug(f"Processing property: {property_data.get('property_id')}")
             # --- Basic Property Info ---
             prop_info = {
                 "property_id": property_data.get('property_id'),
                 "address": property_data.get('property_address_full'),
-                "owner_name": property_data.get('owner_name'),  # This is the assessor owner name
-                "first_contact_name": None,  # Initialize field for first contact name
+                "owner_name": property_data.get('owner_name'),
+                "first_contact_name": None,
                 "bedrooms": property_data.get('total_bedrooms'),
                 "baths": property_data.get('total_baths'),
                 "sqft": property_data.get('building_square_feet'),
@@ -71,43 +88,38 @@ async def transform_property_data(data: Any = Body(...)):
 
             # --- Process Phone Numbers and Find First Contact Name ---
             unique_phones_for_property = set()
-            first_contact_found = False  # Flag to track if we've captured the first contact name
+            first_contact_found = False
 
             phone_numbers_list = property_data.get('phone_numbers', [])
             if isinstance(phone_numbers_list, list):
+                logger.debug(f"Processing {len(phone_numbers_list)} phone numbers for property {property_data.get('property_id')}")
                 for phone_entry in phone_numbers_list:
                     contact_data = phone_entry.get('contact')
                     if contact_data and isinstance(contact_data, dict):
-                        # Capture the name of the first contact encountered
                         if not first_contact_found:
                             full_name = contact_data.get('full_name')
                             if full_name:
                                 prop_info["first_contact_name"] = full_name
-                                first_contact_found = True  # Stop looking for the first contact name
+                                first_contact_found = True
+                                logger.debug(f"Found first contact name: {full_name}")
 
-                        # Extract unencrypted phones from the nested contact object
-                        phone1 = contact_data.get('phone_1')
-                        phone2 = contact_data.get('phone_2')
-                        phone3 = contact_data.get('phone_3')
+                        for phone in [contact_data.get('phone_1'), contact_data.get('phone_2'), contact_data.get('phone_3')]:
+                            if phone:
+                                unique_phones_for_property.add(phone)
 
-                        if phone1:
-                            unique_phones_for_property.add(phone1)
-                        if phone2:
-                            unique_phones_for_property.add(phone2)
-                        if phone3:
-                            unique_phones_for_property.add(phone3)
-
-            # Convert the set to a sorted list for consistent ordering
-            # and add sequentially numbered keys to the prop_info dictionary
             sorted_unique_phones = sorted(list(unique_phones_for_property))
+            logger.debug(f"Found {len(sorted_unique_phones)} unique phone numbers for property {property_data.get('property_id')}")
+            
             for i, phone in enumerate(sorted_unique_phones):
-                prop_info[f'phone_{i}'] = phone  # Add phone_0, phone_1, etc.
+                prop_info[f'phone_{i}'] = phone
 
             extracted_properties.append(prop_info)
 
+        logger.info(f"Successfully processed {len(extracted_properties)} properties")
         return extracted_properties
 
     except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
