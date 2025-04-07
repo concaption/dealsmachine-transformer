@@ -93,13 +93,13 @@ async def transform_property_data(data: Any = Body(...)):
                     raise HTTPException(status_code=400, detail=f"Invalid JSON data: {str(e)}")
 
         # Basic structure validation
-        if not isinstance(data, list):
-            logger.error(f"Data is not a list. Type: {type(data)}")
-            raise HTTPException(status_code=400, detail="Expected data to be a list")
+        if not isinstance(data, dict):
+            logger.error(f"Data is not a dictionary. Type: {type(data)}")
+            raise HTTPException(status_code=400, detail="Expected data to be a dictionary")
             
         if not data:
             logger.error("Data list is empty")
-            raise HTTPException(status_code=400, detail="Expected data to be a non-empty list")
+            raise HTTPException(status_code=400, detail="Expected data to be a non-empty dictionary")
 
         try:
             # Extract properties from the nested structure
