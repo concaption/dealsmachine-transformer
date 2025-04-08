@@ -131,6 +131,12 @@ async def transform_property_data(data: Dict[str, Any] = Body(...)):
                     prop_info = {
                         "property_id": property_data.get('property_id'),
                         "address": property_data.get('property_address_full'),
+                        "address_street": property_data.get('property_address'),
+                        "address_street2": property_data.get('property_address2'),
+                        "address_city": property_data.get('property_address_city'),
+                        "address_state": property_data.get('property_address_state'),
+                        "address_zip": property_data.get('property_address_zip'),
+                        "address_range": property_data.get('property_address_range'),
                         "owner_name": property_data.get('owner_name'),
                         "first_contact_name": None,
                         "bedrooms": property_data.get('total_bedrooms'),
@@ -139,7 +145,7 @@ async def transform_property_data(data: Dict[str, Any] = Body(...)):
                         "estimated_value": property_data.get('EstimatedValue'),
                         "equity_percent": property_data.get('equity_percent'),
                         "last_sale_date": property_data.get('sale_date'),
-                        "last_sale_price": property_data.get('sale_price'),
+                        "last_sale_price": property_data.get('saleprice'),
                         "flags": [flag.get('label') for flag in property_data.get('property_flags', []) if flag and isinstance(flag, dict) and flag.get('label')],
                     }
 
